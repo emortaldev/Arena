@@ -13,9 +13,9 @@ public record ArenaOption(@NotNull String name, @NotNull String description,
 
     public @NotNull ItemStack item() {
         return ItemUtils.stripItalics(ItemStack.builder(material)
-                .displayName(Component.text(name, color))
+                .customName(Component.text(name, color))
                 .lore(Component.text(description, NamedTextColor.GRAY))
-                .meta(ItemUtils::hideFlags)
+                .hideExtraTooltip()
                 .build());
     }
 }

@@ -1,6 +1,7 @@
 package net.minestom.arena.game.mob;
 
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -8,7 +9,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
-import net.minestom.arena.*;
+import net.minestom.arena.Icons;
+import net.minestom.arena.Items;
+import net.minestom.arena.Messenger;
 import net.minestom.arena.feature.Feature;
 import net.minestom.arena.feature.Features;
 import net.minestom.arena.game.ArenaOption;
@@ -19,15 +22,17 @@ import net.minestom.arena.lobby.Lobby;
 import net.minestom.arena.lobby.LobbySidebarDisplay;
 import net.minestom.arena.utils.ItemUtils;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.attribute.Attribute;
-import net.minestom.server.attribute.AttributeInstance;
-import net.minestom.server.attribute.AttributeModifier;
-import net.minestom.server.attribute.AttributeOperation;
+import net.minestom.server.ServerFlag;
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;
-import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.entity.metadata.arrow.ArrowMeta;
+import net.minestom.server.entity.attribute.Attribute;
+import net.minestom.server.entity.attribute.AttributeInstance;
+import net.minestom.server.entity.attribute.AttributeModifier;
+import net.minestom.server.entity.attribute.AttributeOperation;
+import net.minestom.server.entity.damage.Damage;
+import net.minestom.server.entity.metadata.projectile.ArrowMeta;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.event.entity.EntityDeathEvent;
 import net.minestom.server.event.entity.projectile.ProjectileCollideWithEntityEvent;
@@ -39,8 +44,8 @@ import net.minestom.server.event.player.PlayerEntityInteractEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
-import net.minestom.server.particle.ParticleCreator;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.TaskSchedule;
@@ -71,10 +76,10 @@ public final class MobArena implements SingleInstanceArena {
 
     static final Tag<Integer> MELEE_TAG = Tag.Integer("melee").defaultValue(-10);
     static final Tag<Integer> ARMOR_TAG = Tag.Integer("armor").defaultValue(0);
-    private static final AttributeModifier ATTACK_SPEED_MODIFIER = new AttributeModifier("mobarena-attack-speed", 100f, AttributeOperation.ADDITION);
+    private static final AttributeModifier ATTACK_SPEED_MODIFIER = new AttributeModifier("mobarena-attack-speed", 100f, AttributeOperation.ADD_VALUE);
 
     private static final ItemStack WAND = ItemUtils.stripItalics(ItemStack.builder(Material.BLAZE_ROD)
-            .displayName(Component.text("Wand"))
+            .customName(Component.text("Wand"))
             .build());
 
     private static final ArenaClass KNIGHT_CLASS = new ArenaClass("Knight", "Starter class with mediocre attack and defense.",
@@ -115,23 +120,23 @@ public final class MobArena implements SingleInstanceArena {
             TextColor.color(0xf9ff87), Material.LAVA_BUCKET, null, null,
             level -> "Armor effectiveness is currently increased by " + MathUtils.round(Math.pow(1.15, level) * 100 - 100, 2) + "%",
             10, 1.1f, 20);
-    private static final UUID HEALTHCARE_UUID = new UUID(9354678, 3425896);
-    private static final UUID COMBAT_TRAINING_UUID = new UUID(24539786, 23945687);
+    private static final Key HEALTHCARE_KEY = Key.key("mobarena-healthcare");
+    private static final Key COMBAT_TRAINING_KEY = Key.key("mobarena-combat-training");
 
     public static final List<ArenaUpgrade> UPGRADES = List.of(
             new ArenaUpgrade("Improved Healthcare", "Increases max health by two hearts per level, and healing by one heart if you have the upgrade.",
                     TextColor.color(0x63ff52), Material.POTION, (player, count) -> {
                         final AttributeModifier modifier = new AttributeModifier(
-                                HEALTHCARE_UUID, "mobarena-healthcare", 4 * count,
-                                AttributeOperation.ADDITION
+                                HEALTHCARE_KEY, 4 * count,
+                                AttributeOperation.ADD_VALUE
                         );
 
                         player.getAttribute(Attribute.MAX_HEALTH).removeModifier(modifier);
                         player.getAttribute(Attribute.MAX_HEALTH).addModifier(modifier);
                     }, player -> {
                         AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
-                        for (AttributeModifier modifier : attribute.getModifiers()) {
-                            if (!modifier.getId().equals(HEALTHCARE_UUID)) continue;
+                        for (AttributeModifier modifier : attribute.modifiers()) {
+                            if (!modifier.id().equals(HEALTHCARE_KEY)) continue;
                             attribute.removeModifier(modifier);
                         }
                         player.heal();
@@ -140,16 +145,16 @@ public final class MobArena implements SingleInstanceArena {
             new ArenaUpgrade("Combat Training", "All physical attacks deal 10% more damage",
                     TextColor.color(0xff5c3c), Material.IRON_SWORD, (player, count) -> {
                         final AttributeModifier modifier = new AttributeModifier(
-                                COMBAT_TRAINING_UUID, "mobarena-combat-training", (float) (Math.pow(1.1, count) - 1),
-                                AttributeOperation.MULTIPLY_TOTAL
+                                COMBAT_TRAINING_KEY, (float) (Math.pow(1.1, count) - 1),
+                                AttributeOperation.ADD_MULTIPLIED_TOTAL
                         );
 
                         player.getAttribute(Attribute.ATTACK_DAMAGE).removeModifier(modifier);
                         player.getAttribute(Attribute.ATTACK_DAMAGE).addModifier(modifier);
                     }, player -> {
                         AttributeInstance attribute = player.getAttribute(Attribute.ATTACK_DAMAGE);
-                        for (AttributeModifier modifier : attribute.getModifiers()) {
-                            if (!modifier.getId().equals(COMBAT_TRAINING_UUID)) continue;
+                        for (AttributeModifier modifier : attribute.modifiers()) {
+                            if (!modifier.id().equals(COMBAT_TRAINING_KEY)) continue;
                             attribute.removeModifier(modifier);
                         }
                     }, level -> "Physical attacks now deal " + MathUtils.round(Math.pow(1.1, level) * 100 - 100, 2) + "% more damage",
@@ -294,12 +299,11 @@ public final class MobArena implements SingleInstanceArena {
         }).addListener(InventoryPreClickEvent.class, event -> {
             final int slot = event.getSlot();
             final ItemStack clickedItem = event.getClickedItem();
-            final ItemStack cursorItem = event.getCursorItem();
 
             if (!(slot >= PlayerInventoryUtils.HELMET_SLOT && slot <= PlayerInventoryUtils.BOOTS_SLOT))
                 return;
 
-            if (clickedItem.getTag(Kit.KIT_ITEM_TAG) || cursorItem.getTag(Kit.KIT_ITEM_TAG)) {
+            if (clickedItem.getTag(Kit.KIT_ITEM_TAG)) {
                 event.setCancelled(true);
             }
         });
@@ -315,14 +319,14 @@ public final class MobArena implements SingleInstanceArena {
         if (isStopping) return;
         isStopping = true;
 
-        if (stageInProgress && arenaInstance.getPlayers().size() > 0) {
+        if (stageInProgress && !arenaInstance.getPlayers().isEmpty()) {
             final Duration time = Duration.ofSeconds(30);
             final long timeoutAt = System.currentTimeMillis() + time.toMillis();
             Messenger.warn(group(), "This arena is stopping. You have " + time.getSeconds() + " seconds to complete the stage");
 
             //TODO: Use Messenger to provide nice countdowns
             MinecraftServer.getSchedulerManager().submitTask(() -> {
-                if (stageInProgress && arenaInstance.getPlayers().size() > 0
+                if (stageInProgress && !arenaInstance.getPlayers().isEmpty()
                         && System.currentTimeMillis() < timeoutAt)
                     return TaskSchedule.duration(Duration.ofSeconds(1));
 
@@ -450,7 +454,7 @@ public final class MobArena implements SingleInstanceArena {
         }
 
         for (Player member : group.members()) {
-            member.setHealth(member.getHealth() + (getUpgrade(UPGRADES.get(0)) > 0 ? 6 : 4)); // Heal 2 hearts + 1 heart if you have improved healthcare
+            member.setHealth(member.getHealth() + (getUpgrade(UPGRADES.getFirst()) > 0 ? 6 : 4)); // Heal 2 hearts + 1 heart if you have improved healthcare
             playerClass(member).apply(member);
         }
 
@@ -458,7 +462,7 @@ public final class MobArena implements SingleInstanceArena {
             entity.setInstance(arenaInstance, Vec.ONE
                     .rotateAroundY(ThreadLocalRandom.current().nextDouble(2 * Math.PI))
                     .mul(SPAWN_RADIUS, 0, SPAWN_RADIUS)
-                    .asPosition()
+                    .asPos()
                     .add(0, HEIGHT, 0));
         }
 
@@ -544,10 +548,10 @@ public final class MobArena implements SingleInstanceArena {
         }), Features.combat(false, (attacker, victim) -> {
             float damage = 1;
             if (attacker instanceof LivingEntity livingEntity) {
-                damage = livingEntity.getAttributeValue(Attribute.ATTACK_DAMAGE);
+                damage = (float) livingEntity.getAttributeValue(Attribute.ATTACK_DAMAGE);
             } else if (attacker instanceof EntityProjectile projectile && projectile.getShooter() instanceof Player player) {
-                final float movementSpeed = (float) (projectile.getVelocity().length() / MinecraftServer.TICK_PER_SECOND);
-                damage = movementSpeed * player.getAttributeValue(Attribute.ATTACK_DAMAGE);
+                final float movementSpeed = (float) (projectile.getVelocity().length() / ServerFlag.SERVER_TICKS_PER_SECOND);
+                damage = (float) (movementSpeed * player.getAttributeValue(Attribute.ATTACK_DAMAGE));
             }
 
             if (attacker instanceof Player player) {
@@ -568,7 +572,7 @@ public final class MobArena implements SingleInstanceArena {
                 // 20 armor points = max reduction
                 final float multi = (float) (-0.04f * armorPoints * Math.pow(1.15, getUpgrade(ALLOYING_UPGRADE)));
 
-                damage *= Math.max(1 + multi, 0.2);
+                damage *= (float) Math.max(1 + multi, 0.2);
             }
 
             return damage;
@@ -579,7 +583,7 @@ public final class MobArena implements SingleInstanceArena {
                 !item.getTag(Kit.KIT_ITEM_TAG)
         ), Features.functionalItem(
                 // Normally you'd use a.isSimilar(b) but the tags are very much different on these items
-                item -> WAND.material() == item.material() && WAND.getDisplayName().equals(item.getDisplayName()),
+                item -> WAND.material() == item.material() && WAND.get(DataComponents.CUSTOM_NAME).equals(item.get(DataComponents.CUSTOM_NAME)),
                 player -> {
                     final Instance instance = player.getInstance();
                     final AtomicReference<Pos> atomicPos = new AtomicReference<>(player.getPosition().add(0, player.getEyeHeight(), 0));
@@ -597,17 +601,17 @@ public final class MobArena implements SingleInstanceArena {
                                 .stream()
                                 .anyMatch(entity -> entity instanceof ArenaMob) ||
                                 !instance.getBlock(pos).isAir() ||
-                                !instance.getWorldBorder().isInside(pos) ||
+                                !instance.getWorldBorder().inBounds(pos) ||
                                 age >= 30) {
 
-                            explosion(DamageType.fromPlayer(player), instance, pos, 5, 0.5f, 7, 1);
+                            explosion(Damage.fromPlayer(player, 7), instance, pos, 5, 0.5f,1);
 
                             return TaskSchedule.stop();
                         }
 
-                        instance.sendGroupedPacket(ParticleCreator.createParticlePacket(
-                                Particle.FIREWORK, true, pos.x(), pos.y(), pos.z(),
-                                0.3f, 0.3f, 0.3f, 0.01f, 50, null
+                        instance.sendGroupedPacket(new ParticlePacket(
+                                Particle.FIREWORK, true, true, pos,
+                                new Vec(0.3f), 0.01f, 50
                         ));
                         instance.playSound(
                                 Sound.sound(SoundEvent.ENTITY_AXOLOTL_SWIM, Sound.Source.NEUTRAL, 1, 1),
@@ -627,24 +631,24 @@ public final class MobArena implements SingleInstanceArena {
 
                 final Instance instance = event.getInstance();
                 final Pos pos = target.getPosition();
-                explosion(DamageType.fromProjectile(shooter, projectile), instance, pos, 6, 1, 7, 0.3f);
+                explosion(Damage.fromProjectile(shooter, projectile, 7), instance, pos, 6, 1, 0.3f);
             }).addListener(EntityAttackEvent.class, event -> {
                 if (!(event.getEntity() instanceof Player player)) return;
                 if (!(event.getTarget() instanceof LivingEntity target)) return;
 
                 final Instance instance = event.getInstance();
                 final Pos pos = target.getPosition();
-                explosion(DamageType.fromPlayer(player), instance, pos, 3, 1f, 3, 0.3f);
+                explosion(Damage.fromPlayer(player, 3), instance, pos, 3, 1f, 0.3f);
             }));
         }
 
         return features;
     }
 
-    private static void explosion(DamageType damageType, Instance instance, Pos pos, int range, float offset, int damage, float volume) {
-        instance.sendGroupedPacket(ParticleCreator.createParticlePacket(
-                Particle.EXPLOSION, pos.x(), pos.y(), pos.z(),
-                offset, offset, offset, 5
+    private static void explosion(Damage damageType, Instance instance, Pos pos, int range, float offset, float volume) {
+        instance.sendGroupedPacket(new ParticlePacket(
+                Particle.EXPLOSION, pos,
+                new Vec(offset), 5, 1
         ));
         instance.playSound(
                 Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.NEUTRAL, volume, 1),
@@ -652,7 +656,7 @@ public final class MobArena implements SingleInstanceArena {
         );
         for (Entity entity : instance.getNearbyEntities(pos, range)) {
             if (entity instanceof LivingEntity livingEntity && !(entity instanceof Player))
-                livingEntity.damage(damageType, damage);
+                livingEntity.damage(damageType);
         }
     }
 }

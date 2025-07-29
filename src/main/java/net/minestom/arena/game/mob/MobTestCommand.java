@@ -11,7 +11,7 @@ import net.minestom.server.command.builder.arguments.ArgumentType;
 import net.minestom.server.command.builder.arguments.number.ArgumentNumber;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.damage.DamageType;
+import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.utils.MathUtils;
@@ -83,7 +83,7 @@ public final class MobTestCommand extends Command {
                         .set(MobArena.MELEE_TAG, 10000).build()
         ), strong);
 
-        addSyntax((sender, context) -> ((Player) sender).damage(DamageType.VOID, 10), damageme);
+        addSyntax((sender, context) -> ((Player) sender).damage(Damage.fromPlayer((Player) sender, 10)), damageme);
     }
 
     private static @NotNull Optional<MobArena> arena(CommandSender sender) {

@@ -1,5 +1,6 @@
 package net.minestom.arena.lobby;
 
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.minestom.arena.group.Group;
 import net.minestom.arena.utils.FullbrightDimension;
 import net.minestom.server.MinecraftServer;
@@ -9,9 +10,8 @@ import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.event.instance.AddEntityToInstanceEvent;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.player.PlayerEntityInteractEvent;
-import net.minestom.server.instance.AnvilLoader;
 import net.minestom.server.instance.Instance;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
+import net.minestom.server.instance.anvil.AnvilLoader;
 
 import java.nio.file.Path;
 
@@ -50,6 +50,6 @@ public final class Lobby {
         player.refreshCommands();
         player.getInventory().clear();
         player.teleport(new Pos(0.5, 16, 0.5));
-        player.tagHandler().updateContent(NBTCompound.EMPTY);
+        player.tagHandler().updateContent(CompoundBinaryTag.empty());
     }
 }

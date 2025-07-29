@@ -2,18 +2,14 @@ package net.minestom.arena.feature;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.minestom.server.coordinate.Pos;
-import net.minestom.server.entity.Entity;
-import net.minestom.server.entity.EntityProjectile;
-import net.minestom.server.entity.LivingEntity;
-import net.minestom.server.entity.Player;
-import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.entity.hologram.Hologram;
+import net.minestom.server.entity.*;
+import net.minestom.server.entity.damage.Damage;
+import net.minestom.server.entity.metadata.display.AbstractDisplayMeta;
+import net.minestom.server.entity.metadata.display.TextDisplayMeta;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.event.entity.projectile.ProjectileCollideWithEntityEvent;
 import net.minestom.server.event.trait.InstanceEvent;
-import net.minestom.server.instance.Instance;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.time.TimeUnit;
@@ -49,7 +45,7 @@ record CombatFeature(boolean playerCombat, ToDoubleBiFunction<Entity, Entity> da
 
             float damage = (float) damageFunction.applyAsDouble(projectile, target);
 
-            target.damage(DamageType.fromProjectile(projectile.getShooter(), projectile), damage);
+            target.damage(Damage.fromProjectile(projectile.getShooter(), projectile, damage));
             target.setTag(INVULNERABLE_UNTIL_TAG, now + invulnerabilityFunction.applyAsLong(target));
 
             takeKnockbackFromArrow(target, projectile);
@@ -72,7 +68,7 @@ record CombatFeature(boolean playerCombat, ToDoubleBiFunction<Entity, Entity> da
 
             float damage = (float) damageFunction.applyAsDouble(event.getEntity(), target);
 
-            target.damage(DamageType.fromEntity(event.getEntity()), damage);
+            target.damage(Damage.fromEntity(event.getEntity(), damage));
             target.setTag(INVULNERABLE_UNTIL_TAG, now + invulnerabilityFunction.applyAsLong(target));
 
             takeKnockback(target, event.getEntity());
@@ -96,27 +92,30 @@ record CombatFeature(boolean playerCombat, ToDoubleBiFunction<Entity, Entity> da
     private static void spawnHologram(Entity target, float damage) {
         damage = MathUtils.round(damage, 2);
 
-        new DamageHologram(
-                target.getInstance(),
-                target.getPosition().add(0, target.getEyeHeight(), 0),
-                Component.text(damage, NamedTextColor.RED)
-        );
+        Entity hologram = new DamageHologram(Component.text(damage, NamedTextColor.RED));
+        hologram.setInstance(target.getInstance(), target.getPosition().add(0, target.getEyeHeight(), 0));
     }
 
-    private static final class DamageHologram extends Hologram {
-        private DamageHologram(Instance instance, Pos spawnPosition, Component text) {
-            super(instance, spawnPosition, text, true, true);
-            getEntity().getEntityMeta().setHasNoGravity(false);
+    private static final class DamageHologram extends Entity {
+        private DamageHologram(Component text) {
+            super(EntityType.TEXT_DISPLAY);
+
+            setNoGravity(true);
+
+            editEntityMeta(TextDisplayMeta.class, meta -> {
+                meta.setBillboardRenderConstraints(AbstractDisplayMeta.BillboardConstraints.CENTER);
+                meta.setText(text);
+            });
 
             Random random = ThreadLocalRandom.current();
-            getEntity().setVelocity(getPosition()
+            setVelocity(getPosition()
                     .direction()
                     .withX(random.nextDouble(2))
                     .withY(3)
                     .withZ(random.nextDouble(2))
                     .normalize().mul(3));
 
-            getEntity().scheduleRemove(Duration.of(15, TimeUnit.SERVER_TICK));
+            scheduleRemove(Duration.of(15, TimeUnit.SERVER_TICK));
         }
     }
 }

@@ -11,7 +11,10 @@ import net.minestom.server.item.Material;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 enum ArenaType {
@@ -36,8 +39,8 @@ enum ArenaType {
               @NotNull List<ArenaOption> availableOptions) {
 
         item = ItemUtils.stripItalics(ItemStack.builder(material)
-                .displayName(Component.text(name, color))
-                .meta(ItemUtils::hideFlags)
+                .customName(Component.text(name, color))
+                .hideExtraTooltip()
                 .build());
         this.supplier = supplier;
         this.name = name;

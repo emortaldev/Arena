@@ -6,26 +6,29 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.arena.Items;
 import net.minestom.arena.Messenger;
 import net.minestom.arena.utils.ItemUtils;
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.inventory.TransactionOption;
-import net.minestom.server.item.Enchantment;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.item.component.EnchantmentList;
+import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.sound.SoundEvent;
 
 final class NextStageInventory extends Inventory {
     private static final ItemStack HEADER = ItemUtils.stripItalics(ItemStack.builder(Material.PAPER)
-            .displayName(Component.text("Next Stage", NamedTextColor.GOLD))
+            .customName(Component.text("Next Stage", NamedTextColor.GOLD))
             .lore(Component.text("Buy a different class, team upgrades or just continue to the next stage", NamedTextColor.GRAY))
             .build());
     private static final ItemStack CLASS_SELECTION = ItemUtils.stripItalics(ItemStack.builder(Material.SHIELD)
-            .displayName(Component.text("Class Selection", NamedTextColor.GREEN))
+            .customName(Component.text("Class Selection", NamedTextColor.GREEN))
             .lore(Component.text("Buy a different class", NamedTextColor.GRAY))
             .build());
     private static final ItemStack TEAM_UPGRADES = ItemUtils.stripItalics(ItemStack.builder(Material.ANVIL)
-            .displayName(Component.text("Team Upgrades", NamedTextColor.LIGHT_PURPLE))
+            .customName(Component.text("Team Upgrades", NamedTextColor.LIGHT_PURPLE))
             .lore(Component.text("Buy upgrades for the whole team", NamedTextColor.GRAY))
             .build());
 
@@ -45,8 +48,11 @@ final class NextStageInventory extends Inventory {
         setItemStack(30, Items.CLOSE);
         setItemStack(32, Items.CONTINUE);
 
-        addInventoryCondition((p, s, c, result) -> result.setCancel(true));
-        addInventoryCondition((p, slot, c, r) -> {
+        eventNode().addListener(InventoryPreClickEvent.class, event -> {
+            event.setCancelled(true);
+
+            int slot = event.getSlot();
+
             switch (slot) {
                 case 12 -> player.openInventory(new ClassSelectionInventory(this));
                 case 14 -> player.openInventory(new TeamUpgradeInventory(this));
@@ -69,8 +75,11 @@ final class NextStageInventory extends Inventory {
 
             setItemStack(31, Items.BACK);
 
-            addInventoryCondition((p, s, c, result) -> result.setCancel(true));
-            addInventoryCondition((p, slot, c, r) -> {
+            eventNode().addListener(InventoryPreClickEvent.class, event -> {
+                event.setCancelled(true);
+
+                int slot = event.getSlot();
+
                 if (slot == 31) player.openInventory(parent);
                 else {
                     final int length = MobArena.CLASSES.size();
@@ -91,11 +100,13 @@ final class NextStageInventory extends Inventory {
             for (int i = 0; i < length; i++) {
                 ArenaClass arenaClass = MobArena.CLASSES.get(i);
 
-                setItemStack(13 - length / 2 + i, arenaClass.itemStack()
-                        .withMeta(builder -> {
-                            if (arena.playerClass(player).equals(arenaClass))
-                                builder.enchantment(Enchantment.PROTECTION, (short) 1);
-                        }));
+                ItemStack itemStack = arenaClass.itemStack();
+                if (arena.playerClass(player).equals(arenaClass)) {
+                    itemStack = itemStack.with(DataComponents.ENCHANTMENTS,
+                            new EnchantmentList(Enchantment.PROTECTION, 1));
+                }
+
+                setItemStack(13 - length / 2 + i, itemStack);
             }
         }
 
@@ -127,8 +138,11 @@ final class NextStageInventory extends Inventory {
 
             setItemStack(31, Items.BACK);
 
-            addInventoryCondition((p, s, c, result) -> result.setCancel(true));
-            addInventoryCondition((p, slot, c, r) -> {
+            eventNode().addListener(InventoryPreClickEvent.class, event -> {
+                event.setCancelled(true);
+
+                int slot = event.getSlot();
+
                 if (slot == 31) player.openInventory(parent);
                 else {
                     final int length = MobArena.UPGRADES.size();

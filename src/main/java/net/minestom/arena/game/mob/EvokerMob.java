@@ -1,7 +1,7 @@
 package net.minestom.arena.game.mob;
 
-import net.minestom.server.attribute.Attribute;
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityCreature;
 import net.minestom.server.entity.EntityType;
@@ -9,10 +9,12 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.ai.GoalSelector;
 import net.minestom.server.entity.ai.goal.MeleeAttackGoal;
 import net.minestom.server.entity.ai.target.ClosestEntityTarget;
+import net.minestom.server.entity.attribute.Attribute;
+import net.minestom.server.entity.attribute.AttributeInstance;
 import net.minestom.server.entity.metadata.monster.raider.EvokerMeta;
 import net.minestom.server.entity.metadata.monster.raider.SpellcasterIllagerMeta;
+import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
-import net.minestom.server.particle.ParticleCreator;
 import net.minestom.server.timer.TaskSchedule;
 import net.minestom.server.utils.time.Cooldown;
 import net.minestom.server.utils.time.TimeUnit;
@@ -42,16 +44,20 @@ final class EvokerMob extends ArenaMob {
                                     List.of(new MeleeAttackGoal(silverfish, 1.2, 20, TimeUnit.SERVER_TICK)),
                                     List.of(new ClosestEntityTarget(silverfish, 32, entity -> entity instanceof Player))
                             );
-                            silverfish.getAttribute(Attribute.MAX_HEALTH).setBaseValue(silverfish.getMaxHealth() / 4);
+
+                            AttributeInstance attribute = silverfish.getAttribute(Attribute.MAX_HEALTH);
+                            attribute.setBaseValue(attribute.getBaseValue() / 4);
                             silverfish.heal();
                             final Pos pos = position.add(
                                     random.nextFloat(-2, 2), 0,
                                     random.nextFloat(-2, 2)
                             );
                             silverfish.setInstance(instance, pos);
-                            instance.sendGroupedPacket(ParticleCreator.createParticlePacket(
-                                    Particle.POOF, true, pos.x(), pos.y(), pos.z(),
-                                    0.2f, 0.2f, 0.2f, 0.1f, 10, null
+
+
+                            instance.sendGroupedPacket(new ParticlePacket(
+                                    Particle.POOF, true, true, pos,
+                                    new Vec(0.2f, 0.2f, 0.2f), 0.1f, 10
                             ));
                         }
 

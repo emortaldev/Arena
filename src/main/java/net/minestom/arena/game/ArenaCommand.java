@@ -3,21 +3,24 @@ package net.minestom.arena.game;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.arena.Items;
-import net.minestom.arena.lobby.Lobby;
 import net.minestom.arena.Messenger;
 import net.minestom.arena.group.Group;
+import net.minestom.arena.lobby.Lobby;
 import net.minestom.arena.utils.CommandUtils;
 import net.minestom.arena.utils.ItemUtils;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentEnum;
 import net.minestom.server.command.builder.arguments.ArgumentType;
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
-import net.minestom.server.inventory.click.ClickType;
-import net.minestom.server.item.Enchantment;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.item.component.EnchantmentList;
+import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 
@@ -59,7 +62,7 @@ public final class ArenaCommand extends Command {
     private static final class ArenaInventory extends Inventory {
         private static final Tag<Integer> ARENA_TAG = Tag.Integer("arena").defaultValue(-1);
         private static final ItemStack HEADER = ItemUtils.stripItalics(ItemStack.builder(Material.IRON_BARS)
-                .displayName(Component.text("Arena", NamedTextColor.RED))
+                .customName(Component.text("Arena", NamedTextColor.RED))
                 .lore(Component.text("Select an arena to play in", NamedTextColor.GRAY))
                 .build());
 
@@ -79,21 +82,27 @@ public final class ArenaCommand extends Command {
                         )))
                         .withTag(ARENA_TAG, arenaType.ordinal())));
 
-            addInventoryCondition((player, slot, clickType, result) -> {
-                result.setCancel(true);
+            eventNode().addListener(InventoryPreClickEvent.class, event -> {
+                event.setCancelled(true);
+
+                int slot = event.getSlot();
+                Click click = event.getClick();
+                ItemStack clickedItem = event.getClickedItem();
+
+                Player player = event.getPlayer();
 
                 if (slot == 31) { // Close button
                     player.closeInventory();
                     return;
                 }
 
-                final int arena = result.getClickedItem().getTag(ARENA_TAG);
+                final int arena = clickedItem.getTag(ARENA_TAG);
                 if (arena == -1) return;
                 final ArenaType type = ArenaType.values()[arena];
 
-                if (clickType == ClickType.RIGHT_CLICK) {
+                if (click instanceof Click.Right) {
                     player.openInventory(new ArenaOptionInventory(this, type));
-                } else{
+                } else {
                     player.closeInventory();
                     play(player, type, Set.of());
                 }
@@ -103,7 +112,7 @@ public final class ArenaCommand extends Command {
 
     private static final class ArenaOptionInventory extends Inventory {
         private static final ItemStack PLAY_ITEM = ItemUtils.stripItalics(ItemStack.builder(Material.NOTE_BLOCK)
-                .displayName(Component.text("Play", NamedTextColor.GREEN))
+                .customName(Component.text("Play", NamedTextColor.GREEN))
                 .lore(Component.text("Play this arena", NamedTextColor.GRAY))
                 .build());
         private static final Tag<Integer> OPTION_TAG = Tag.Integer("option").defaultValue(-1);
@@ -119,8 +128,12 @@ public final class ArenaCommand extends Command {
 
             draw();
 
-            addInventoryCondition((player, slot, c, result) -> {
-                result.setCancel(true);
+            eventNode().addListener(InventoryPreClickEvent.class, event -> {
+                event.setCancelled(true);
+
+                int slot = event.getSlot();
+                Player player = event.getPlayer();
+                ItemStack clickedItem = event.getClickedItem();
 
                 if (slot == 30) { // Play button
                     player.closeInventory();
@@ -133,7 +146,7 @@ public final class ArenaCommand extends Command {
                     return;
                 }
 
-                final int index = result.getClickedItem().getTag(OPTION_TAG);
+                final int index = clickedItem.getTag(OPTION_TAG);
                 if (index == -1) return;
                 final ArenaOption option = availableOptions.get(index);
 
@@ -152,10 +165,11 @@ public final class ArenaCommand extends Command {
 
             final int start = 13 - availableOptions.size() / 2;
             int index = 0;
-            for (ArenaOption option : availableOptions)
-                setItemStack(start + index, option.item().withTag(OPTION_TAG, index++).withMeta(builder -> {
-                    if (selectedOptions.contains(option)) builder.enchantment(Enchantment.PROTECTION, (short) 1);
-                }));
+            for (ArenaOption option : availableOptions) {
+                ItemStack itemStack = option.item().withTag(OPTION_TAG, index++);
+                if (selectedOptions.contains(option)) itemStack = itemStack.with(DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.PROTECTION, 1));
+                setItemStack(start + index, itemStack);
+            }
         }
     }
 }

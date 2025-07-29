@@ -72,7 +72,7 @@ final class NPC extends EntityCreature {
 
     public void handle(@NotNull PlayerEntityInteractEvent event) {
         if (event.getTarget() != this) return;
-        if (event.getHand() != Player.Hand.MAIN) return; // Prevent duplicating event
+        if (event.getHand() != PlayerHand.MAIN) return; // Prevent duplicating event
 
         event.getEntity().playSound(Sound.sound()
                 .type(SoundEvent.BLOCK_NOTE_BLOCK_PLING)
@@ -90,7 +90,7 @@ final class NPC extends EntityCreature {
         player.sendPacket(new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.ADD_PLAYER,
                 new PlayerInfoUpdatePacket.Entry(
                         getUuid(), name, properties, false, 0, GameMode.SURVIVAL, null,
-                        null)
+                        null, 0)
                 )
         );
 

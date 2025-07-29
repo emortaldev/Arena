@@ -8,6 +8,7 @@ import net.minestom.arena.game.mob.MobTestCommand;
 import net.minestom.arena.group.GroupCommand;
 import net.minestom.arena.group.GroupEvent;
 import net.minestom.arena.lobby.Lobby;
+import net.minestom.arena.utils.FullbrightDimension;
 import net.minestom.arena.utils.ResourceUtils;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.Audiences;
@@ -16,18 +17,20 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.GlobalEventHandler;
+import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerChatEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
-import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.server.ServerTickMonitorEvent;
 import net.minestom.server.extras.MojangAuth;
 import net.minestom.server.extras.lan.OpenToLAN;
 import net.minestom.server.extras.velocity.VelocityProxy;
 import net.minestom.server.monitoring.TickMonitor;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.timer.TaskSchedule;
 import net.minestom.server.utils.MathUtils;
+import net.minestom.server.world.DimensionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +45,9 @@ final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
         if (CONFIG.prometheus().enabled()) Metrics.init();
+
+        // Register fullbright dimension before server start
+        RegistryKey<DimensionType> instance = FullbrightDimension.INSTANCE;
 
         try {
             ResourceUtils.extractResource("lobby");
@@ -69,7 +75,7 @@ final class Main {
             ServerList.hook(handler);
 
             // Login
-            handler.addListener(PlayerLoginEvent.class, event -> {
+            handler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
                 final Player player = event.getPlayer();
                 event.setSpawningInstance(Lobby.INSTANCE);
                 player.setRespawnPoint(new Pos(0.5, 16, 0.5));
@@ -101,9 +107,9 @@ final class Main {
 
             // Chat
             handler.addListener(PlayerChatEvent.class, chatEvent -> {
-                chatEvent.setChatFormat((event) -> Component.text(event.getEntity().getUsername())
+                chatEvent.setFormattedMessage(Component.text(chatEvent.getEntity().getUsername())
                         .append(Component.text(" | ", NamedTextColor.DARK_GRAY)
-                                .append(Component.text(event.getMessage(), NamedTextColor.WHITE))));
+                                .append(Component.text(chatEvent.getRawMessage(), NamedTextColor.WHITE))));
             });
 
             // Monitoring

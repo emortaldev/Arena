@@ -1,10 +1,11 @@
 package net.minestom.arena.game.mob;
 
-import net.minestom.server.attribute.Attribute;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.ai.goal.MeleeAttackGoal;
 import net.minestom.server.entity.ai.target.ClosestEntityTarget;
+import net.minestom.server.entity.attribute.Attribute;
+import net.minestom.server.entity.attribute.AttributeInstance;
 import net.minestom.server.entity.metadata.monster.zombie.ZombieMeta;
 import net.minestom.server.utils.time.TimeUnit;
 
@@ -22,7 +23,8 @@ final class ZombieMob extends ArenaMob {
         boolean isBaby = context.stage() >= 5 && ThreadLocalRandom.current().nextBoolean();
         ((ZombieMeta) entityMeta).setBaby(isBaby);
         if (isBaby) {
-            getAttribute(Attribute.MAX_HEALTH).setBaseValue(getMaxHealth() / 2);
+            AttributeInstance attribute = getAttribute(Attribute.MAX_HEALTH);
+            attribute.setBaseValue(attribute.getBaseValue() / 2);
             heal();
         }
     }

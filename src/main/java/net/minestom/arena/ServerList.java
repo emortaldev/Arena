@@ -8,32 +8,35 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.server.ServerListPingEvent;
-import net.minestom.server.ping.ResponseData;
+import net.minestom.server.ping.Status;
 
 import java.io.InputStream;
-import java.util.Base64;
 import java.util.List;
 
 final class ServerList {
-    private static final String FAVICON = favicon();
-    private static Component motd = motd();
+    private static final byte[] FAVICON = favicon();
+    private static Component MOTD = motd();
 
     public static void hook(EventNode<Event> eventNode) {
         eventNode.addListener(ServerListPingEvent.class, event -> {
-            final ResponseData responseData = event.getResponseData();
-            responseData.setDescription(motd);
-            if (FAVICON != null)
-                responseData.setFavicon(FAVICON);
-            responseData.setMaxPlayer(100);
-            responseData.addEntries(MinecraftServer.getConnectionManager().getOnlinePlayers());
-        }).addListener(ConfigurationReloadedEvent.class, e -> motd = motd());
+            int onlinePlayers = MinecraftServer.getConnectionManager().getOnlinePlayers().size();
+
+            Status.Builder builder = Status.builder()
+                    .description(MOTD)
+                    .favicon(FAVICON)
+                    .playerInfo(onlinePlayers, 100);
+
+            if (FAVICON != null) builder.favicon(FAVICON);
+
+            event.setStatus(builder.build());
+        }).addListener(ConfigurationReloadedEvent.class, e -> MOTD = motd());
     }
 
-    private static String favicon() {
-        String favicon = null;
+    private static byte[] favicon() {
+        byte[] favicon = null;
         try (InputStream stream = Main.class.getResourceAsStream("/favicon.png")) {
             if (stream != null)
-                favicon = "data:image/png;base64," + Base64.getEncoder().encodeToString(stream.readAllBytes());
+                favicon = stream.readAllBytes();
         } catch (Exception e) {
             e.printStackTrace();
         }

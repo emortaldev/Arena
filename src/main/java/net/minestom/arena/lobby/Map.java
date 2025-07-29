@@ -1,5 +1,6 @@
 package net.minestom.arena.lobby;
 
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -8,9 +9,9 @@ import net.minestom.server.entity.metadata.other.ItemFrameMeta;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.metadata.MapMeta;
 import net.minestom.server.map.framebuffers.LargeGraphics2DFramebuffer;
 import net.minestom.server.network.packet.server.SendablePacket;
+import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
@@ -48,19 +49,18 @@ final class Map {
         final int maxX = maximum.blockX();
         final int maxY = maximum.blockY();
         final int z = maximum.blockZ();
-        for (int i = 0; i < 15; i++) {
-            final int x = maxX - i % 5;
-            final int y = maxY - i / 5;
-            final int id = i;
+        for (int id = 0; id < 15; id++) {
+            final int x = maxX - id % 5;
+            final int y = maxY - id / 5;
 
             final Entity itemFrame = new Entity(EntityType.ITEM_FRAME);
             final ItemFrameMeta meta = (ItemFrameMeta) itemFrame.getEntityMeta();
             itemFrame.setInstance(instance, new Pos(x, y, z, 180, 0));
             meta.setNotifyAboutChanges(false);
-            meta.setOrientation(ItemFrameMeta.Orientation.NORTH);
+            meta.setDirection(Direction.NORTH);
             meta.setInvisible(true);
             meta.setItem(ItemStack.builder(Material.FILLED_MAP)
-                    .meta(MapMeta.class, builder -> builder.mapId(id))
+                    .set(DataComponents.MAP_ID, id)
                     .build());
             meta.setNotifyAboutChanges(true);
         }

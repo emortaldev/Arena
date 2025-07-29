@@ -15,13 +15,13 @@ record ArenaClass(String name, String description, String icon, TextColor color,
 
     public ItemStack itemStack() {
         return ItemUtils.stripItalics(ItemStack.builder(material)
-                .displayName(Component.text(icon + " " + name, color))
+                .customName(Component.text(icon + " " + name, color))
                 .lore(
                         Component.text(description, NamedTextColor.GRAY),
                         Component.empty(),
                         Component.text("Switch to this class for " + cost + " coins", NamedTextColor.GOLD)
                 )
-                .meta(ItemUtils::hideFlags)
+                .hideExtraTooltip()
                 .build()
         );
     }

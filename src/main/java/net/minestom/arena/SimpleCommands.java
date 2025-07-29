@@ -40,7 +40,7 @@ final class SimpleCommands {
         leave.setDefaultExecutor((sender, context) -> {
             final Player player = (Player) sender;
             player.setInstance(Lobby.INSTANCE);
-            player.setHealth(player.getMaxHealth());
+            player.heal();
             GroupManager.removePlayer(player);
         });
 

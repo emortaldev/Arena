@@ -1,6 +1,5 @@
 package net.minestom.arena.game.mob;
 
-import de.articdive.jnoise.core.api.pipeline.NoiseSource;
 import de.articdive.jnoise.generators.noisegen.opensimplex.FastSimplexNoiseGenerator;
 import de.articdive.jnoise.generators.noisegen.perlin.PerlinNoiseGenerator;
 import de.articdive.jnoise.modules.octavation.OctavationModule;
@@ -24,7 +23,7 @@ final class MobArenaInstance extends InstanceContainer {
 
     MobArenaInstance() {
         super(UUID.randomUUID(), FullbrightDimension.INSTANCE);
-        getWorldBorder().setDiameter(100);
+        setWorldBorder(getWorldBorder().withDiameter(100));
         setGenerator(unit -> {
             final Point start = unit.absoluteStart();
             for (int x = 0; x < unit.size().x(); x++) {

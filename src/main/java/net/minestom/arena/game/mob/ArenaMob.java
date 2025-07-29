@@ -2,9 +2,10 @@ package net.minestom.arena.game.mob;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.minestom.server.attribute.Attribute;
 import net.minestom.server.entity.EntityCreature;
 import net.minestom.server.entity.EntityType;
+import net.minestom.server.entity.attribute.Attribute;
+import net.minestom.server.entity.attribute.AttributeInstance;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.entity.EntityDeathEvent;
 import org.jetbrains.annotations.Contract;
@@ -25,15 +26,17 @@ class ArenaMob extends EntityCreature {
         super(entityType);
         this.context = context;
         final float multi = context.hasOption(MobArena.TOUGH_MOBS_OPTION) ? 2 : 1;
-        getAttribute(Attribute.MAX_HEALTH).setBaseValue((getMaxHealth() + context.stage() * 2) * multi);
+        AttributeInstance maxHealthAttribute = getAttribute(Attribute.MAX_HEALTH);
+        double maxHealth = maxHealthAttribute.getBaseValue();
+        maxHealthAttribute.setBaseValue((maxHealth + context.stage() * 2) * multi);
         getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue((1 + context.stage() / 4f) * multi);
         heal();
-        setCustomName(generateHealthBar(getMaxHealth(), getHealth()));
+        setCustomName(generateHealthBar((float) maxHealth, getHealth()));
         setCustomNameVisible(true);
         eventNode().addListener(EntityDamageEvent.class, event ->
-                setCustomName(generateHealthBar(getMaxHealth(), getHealth())))
+                setCustomName(generateHealthBar((float) maxHealth, getHealth())))
             .addListener(EntityDeathEvent.class, event ->
-                    setCustomName(generateHealthBar(getMaxHealth(), 0)));
+                    setCustomName(generateHealthBar((float) maxHealth, 0)));
     }
 
     @Contract(pure = true)

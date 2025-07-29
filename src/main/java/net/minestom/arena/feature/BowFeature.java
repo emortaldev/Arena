@@ -7,9 +7,10 @@ import net.minestom.server.entity.EntityProjectile;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
-import net.minestom.server.event.item.ItemUpdateStateEvent;
-import net.minestom.server.event.player.PlayerItemAnimationEvent;
+import net.minestom.server.event.item.PlayerBeginItemUseEvent;
+import net.minestom.server.event.item.PlayerCancelItemUseEvent;
 import net.minestom.server.event.trait.InstanceEvent;
+import net.minestom.server.item.ItemAnimation;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.utils.MathUtils;
@@ -26,11 +27,11 @@ record BowFeature(@NotNull BiFunction<Entity, Double, EntityProjectile> projecti
 
     @Override
     public void hook(@NotNull EventNode<InstanceEvent> node) {
-        node.addListener(EventListener.builder(PlayerItemAnimationEvent.class)
+        node.addListener(EventListener.builder(PlayerBeginItemUseEvent.class)
                 .handler(event -> event.getPlayer().setTag(CHARGE_SINCE_TAG, System.currentTimeMillis()))
-                .filter(event -> event.getItemAnimationType() == PlayerItemAnimationEvent.ItemAnimationType.BOW)
+                .filter(event -> event.getAnimation() == ItemAnimation.BOW)
                 .build()
-        ).addListener(EventListener.builder(ItemUpdateStateEvent.class)
+        ).addListener(EventListener.builder(PlayerCancelItemUseEvent.class)
                 .handler(event -> {
                     final Player player = event.getPlayer();
                     final double chargedFor = (System.currentTimeMillis() - player.getTag(CHARGE_SINCE_TAG)) / 1000D;
