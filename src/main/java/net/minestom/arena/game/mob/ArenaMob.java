@@ -1,11 +1,15 @@
 package net.minestom.arena.game.mob;
 
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.EntityCreature;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeInstance;
+import net.minestom.server.entity.attribute.AttributeModifier;
+import net.minestom.server.entity.attribute.AttributeOperation;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.entity.EntityDeathEvent;
 import org.jetbrains.annotations.Contract;
@@ -22,6 +26,9 @@ class ArenaMob extends EntityCreature {
     private static final String FULL_BLOCK_CHAR = "█";
     protected final MobGenerationContext context;
 
+    protected static final AttributeModifier BABY_SPEED_MODIFIER =
+            new AttributeModifier(Key.key("minecraft:baby"), 0.5, AttributeOperation.ADD_MULTIPLIED_BASE);
+
     public ArenaMob(@NotNull EntityType entityType, MobGenerationContext context) {
         super(entityType);
         this.context = context;
@@ -31,12 +38,12 @@ class ArenaMob extends EntityCreature {
         maxHealthAttribute.setBaseValue((maxHealth + context.stage() * 2) * multi);
         getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue((1 + context.stage() / 4f) * multi);
         heal();
-        setCustomName(generateHealthBar((float) maxHealth, getHealth()));
+        set(DataComponents.CUSTOM_NAME, generateHealthBar((float) maxHealth, getHealth()));
         setCustomNameVisible(true);
         eventNode().addListener(EntityDamageEvent.class, event ->
-                setCustomName(generateHealthBar((float) maxHealth, getHealth())))
+                set(DataComponents.CUSTOM_NAME, generateHealthBar((float) maxHealth, getHealth())))
             .addListener(EntityDeathEvent.class, event ->
-                    setCustomName(generateHealthBar((float) maxHealth, 0)));
+                    set(DataComponents.CUSTOM_NAME, generateHealthBar((float) maxHealth, 0)));
     }
 
     @Contract(pure = true)

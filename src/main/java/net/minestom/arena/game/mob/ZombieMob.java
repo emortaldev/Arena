@@ -20,9 +20,14 @@ final class ZombieMob extends ArenaMob {
                 List.of(new ClosestEntityTarget(this, 32, entity -> entity instanceof Player))
         );
 
+        AttributeInstance movementSpeedAttribute = getAttribute(Attribute.MOVEMENT_SPEED);
+        movementSpeedAttribute.setBaseValue(0.23);
+
         boolean isBaby = context.stage() >= 5 && ThreadLocalRandom.current().nextBoolean();
         ((ZombieMeta) entityMeta).setBaby(isBaby);
         if (isBaby) {
+            movementSpeedAttribute.addModifier(ArenaMob.BABY_SPEED_MODIFIER);
+
             AttributeInstance attribute = getAttribute(Attribute.MAX_HEALTH);
             attribute.setBaseValue(attribute.getBaseValue() / 2);
             heal();
